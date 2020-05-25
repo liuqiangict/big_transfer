@@ -257,6 +257,7 @@ def main(args):
       logger.info(f"[step {step}{accstep}]: loss={c_num:.5f} (lr={lr:.1e})")  # pylint: disable=logging-format-interpolation
       logger.flush()
       writer.add_scalar('Train/loss', c_num, step)
+      writer.add_scalar('Train/lr', lr, step)
 
       # Update params
       if accum_steps == args.batch_split:
