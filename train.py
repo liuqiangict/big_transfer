@@ -24,12 +24,12 @@ import numpy as np
 import torch
 import torchvision as tv
 
-import bit_pytorch.fewshot as fs
-import bit_pytorch.lbtoolbox as lb
-import bit_pytorch.models as models
+import fewshot as fs
+import lbtoolbox as lb
+import models as models
 
-import bit_common
-import bit_hyperrule
+import common
+import hyperrule
 
 from tensorboardX import SummaryWriter
 
@@ -51,7 +51,7 @@ def recycle(iterable):
 
 def mktrainval(args, logger):
   """Returns train and validation datasets."""
-  precrop, crop = bit_hyperrule.get_resolution_from_dataset(args.dataset)
+  precrop, crop = hyperrule.get_resolution_from_dataset(args.dataset)
   train_tx = tv.transforms.Compose([
       tv.transforms.Resize((precrop, precrop)),
       tv.transforms.RandomCrop((crop, crop)),
@@ -162,7 +162,7 @@ def mixup_criterion(criterion, pred, y_a, y_b, l):
 
 
 def main(args):
-  logger = bit_common.setup_logger(args)
+  logger = common.setup_logger(args)
 
   # Lets cuDNN benchmark conv implementations and choose the fastest.
   # Only good if sizes stay the same within the main loop!
@@ -175,7 +175,7 @@ def main(args):
 
   logger.info(f"Loading model from {args.model}.npz")
   model = models.KNOWN_MODELS[args.model](head_size=len(valid_set.classes), zero_head=True)
-  model.load_from(np.load(os.path.join(args.bit_pretrained_dir, f"{args.model}.npz")))
+  model.load_from(np.load(os.path.join(args.pretrained_dir, f"{args.model}.npz")))
 
   logger.info("Moving model onto all GPUs")
   model = torch.nn.DataParallel(model)
@@ -191,7 +191,7 @@ def main(args):
   writer = SummaryWriter(os.path.join(args.logdir, args.name))
 
   # Resume fine-tuning if we find a saved model.
-  savename = pjoin(args.logdir, args.name, "bit.pth.tar")
+  savename = pjoin(args.logdir, args.name, "model.tar")
   try:
     logger.info(f"Model will be saved in '{savename}'")
     checkpoint = torch.load(savename, map_location="cpu")
@@ -208,7 +208,7 @@ def main(args):
   optim.zero_grad()
 
   model.train()
-  mixup = bit_hyperrule.get_mixup(len(train_set))
+  mixup = hyperrule.get_mixup(len(train_set))
   cri = torch.nn.CrossEntropyLoss().to(device)
 
   logger.info("Starting training!")
@@ -230,7 +230,7 @@ def main(args):
       y = y.to(device, non_blocking=True)
 
       # Update learning-rate, including stop training if over.
-      lr = bit_hyperrule.get_lr(step, len(train_set), args.base_lr)
+      lr = hyperrule.get_lr(step, len(train_set), args.base_lr)
       if lr is None:
         break
       for param_group in optim.param_groups:
@@ -272,23 +272,20 @@ def main(args):
         # Run evaluation and save the model.
         if args.eval_every and step % args.eval_every == 0:
           run_eval(model, valid_loader, device, chrono, logger, writer, step)
-          if args.save:
-            torch.save({
-                "step": step,
-                "model": model.state_dict(),
-                "optim" : optim.state_dict(),
-            }, savename)
+        if args.save and step % args.save_every == 0:
+          step_savename = pjoin(args.logdir, args.name, "model_" + str(step) + ".tar")
+          torch.save({"step": step, "model": model.state_dict(), "optim" : optim.state_dict()}, step_savename)
 
       end = time.time()
 
     # Final eval at end of training.
-    run_eval(model, valid_loader, device, chrono, logger, writer, step='end')
+    run_eval(model, valid_loader, device, chrono, logger, writer, step)
 
   logger.info(f"Timings:\n{chrono}")
 
 
 if __name__ == "__main__":
-  parser = bit_common.argparser(models.KNOWN_MODELS.keys())
+  parser = common.argparser(models.KNOWN_MODELS.keys())
   parser.add_argument("--datadir", required=True,
                       help="Path to the ImageNet data folder, preprocessed for torchvision.")
   parser.add_argument("--workers", type=int, default=8,

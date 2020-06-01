@@ -20,7 +20,7 @@ import logging
 import logging.config
 import os
 
-import bit_hyperrule
+import hyperrule
 
 
 def argparser(known_models):
@@ -31,10 +31,10 @@ def argparser(known_models):
                       help="Which variant to use; BiT-M gives best results.")
   parser.add_argument("--logdir", required=True,
                       help="Where to log training info (small).")
-  parser.add_argument("--bit_pretrained_dir", default='.',
+  parser.add_argument("--pretrained_dir", default='.',
                       help="Where to search for pretrained BiT models.")
 
-  parser.add_argument("--dataset", choices=list(bit_hyperrule.known_dataset_sizes.keys()),
+  parser.add_argument("--dataset", choices=list(hyperrule.known_dataset_sizes.keys()),
                       help="Choose the dataset. It should be easy to add your own! "
                       "Don't forget to set --datadir if necessary.")
   parser.add_argument("--examples_per_class", type=int, default=None,
@@ -50,6 +50,9 @@ def argparser(known_models):
   parser.add_argument("--base_lr", type=float, default=0.003,
                       help="Base learning-rate for fine-tuning. Most likely default is best.")
   parser.add_argument("--eval_every", type=int, default=None,
+                      help="Run prediction on validation set every so many steps."
+                      "Will always run one evaluation at the end of training.")
+  parser.add_argument("--save_every", type=int, default=None,
                       help="Run prediction on validation set every so many steps."
                       "Will always run one evaluation at the end of training.")
   return parser
