@@ -74,6 +74,8 @@ def mktrainval(args, logger):
   elif args.dataset == "imagenet2012":
     train_set = tv.datasets.ImageFolder(pjoin(args.datadir, "train"), train_tx)
     valid_set = tv.datasets.ImageFolder(pjoin(args.datadir, "val"), val_tx)
+    #train_set = tv.datasets.ImageNet(args.datadir, transform=val_tx, train=True, download=True)
+    #valid_set = tv.datasets.ImageNet(args.datadir, transform=val_tx, train=False, download=True)
   else:
     raise ValueError(f"Sorry, we have not spent time implementing the "
                      f"{args.dataset} dataset in the PyTorch codebase. "
